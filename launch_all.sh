@@ -1,6 +1,6 @@
 #!/bin/bash
 
-dataset = "VLCS"
+dataset="VLCS"
 data_dir="VLCS"
 algorithm="ERM"
 num_envs=4
