@@ -9,8 +9,15 @@
 #SBATCH --mem=25GB
 #SBATCH --exclude=gpu109
 
-python3 -m domainbed.scripts.train\
-       --data_dir=./domainbed/data/MNIST/\
-       --algorithm IGA\
-       --dataset ColoredMNIST\
-       --test_env 2
+dataset=$1
+data_dir=$2
+env=$3
+algorithm=$4
+index=$5
+
+python3 -m domainbed.scripts.my_train \
+       --data_dir="./domainbed/data/${data_dir}/" \
+       --algorithm $algorithm \
+       --dataset $dataset \
+       --train_env $env \
+       --output_dir "./results/${algorithm}-${dataset}-${env}/${index}"
