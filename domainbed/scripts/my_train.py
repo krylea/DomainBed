@@ -43,7 +43,6 @@ if __name__ == "__main__":
         help='Checkpoint every N steps. Default is dataset-dependent.')
     parser.add_argument('--train_env', type=int)
     parser.add_argument('--output_dir', type=str, default="train_output")
-    parser.add_argument('--checkpoint_dir', type=str, default="")
     parser.add_argument('--holdout_fraction', type=float, default=0.2)
     parser.add_argument('--uda_holdout_fraction', type=float, default=0,
         help="For domain adaptation, % of test to use unlabeled for training.")
@@ -97,13 +96,13 @@ if __name__ == "__main__":
         device = "cpu"
 
     if args.dataset in vars(datasets):
-        dataset = vars(datasets)[args.dataset](args.data_dir,
-            args.test_envs, hparams)
+        dataset_cls = vars(datasets)[args.dataset]
+        n_envs = len(dataset_cls.ENVIRONMENTS)
+        args.test_envs = [i for i in range(n_envs) if i != args.train_env]
+        dataset = dataset_cls(args.data_dir, args.test_envs, hparams)
     else:
         raise NotImplementedError
 
-
-    
     # Split each env into an 'in-split' and an 'out-split'. We'll train on
     # each in-split except the test envs, and evaluate on all splits.
 
@@ -116,37 +115,64 @@ if __name__ == "__main__":
     # domain generalization and domain adaptation results, then domain
     # generalization algorithms should create the same 'uda-splits', which will
     # be discared at training.
-    train_splits = []
-    eval_splits = []
+    in_splits = []
+    out_splits = []
+    uda_splits = []
     for env_i, env in enumerate(dataset):
-        
+        uda = []
+
+        out, in_ = misc.split_dataset(env,
+            int(len(env)*args.holdout_fraction),
+            misc.seed_hash(args.trial_seed, env_i))
+
+        if env_i in args.test_envs:
+            uda, in_ = misc.split_dataset(in_,
+                int(len(in_)*args.uda_holdout_fraction),
+                misc.seed_hash(args.trial_seed, env_i))
+
         if hparams['class_balanced']:
-            env_weights = misc.make_weights_for_balanced_classes(env)
+            in_weights = misc.make_weights_for_balanced_classes(in_)
+            out_weights = misc.make_weights_for_balanced_classes(out)
+            if uda is not None:
+                uda_weights = misc.make_weights_for_balanced_classes(uda)
         else:
-            env_weights = None
-        if env_i != args.train_env:
-            eval_splits.append((env, env_weights))
-        else:
-            train_splits.append(env, env_weights)
-    
-    #eval_splits = [env for env_i, env in enumerate(dataset) if env_i != args.train_dataset]
+            in_weights, out_weights, uda_weights = None, None, None
+        in_splits.append((in_, in_weights))
+        out_splits.append((out, out_weights))
+        if len(uda):
+            uda_splits.append((uda, uda_weights))
+
+    if args.task == "domain_adaptation" and len(uda_splits) == 0:
+        raise ValueError("Not enough unlabeled samples for domain adaptation.")
 
     train_loaders = [InfiniteDataLoader(
         dataset=env,
         weights=env_weights,
         batch_size=hparams['batch_size'],
         num_workers=dataset.N_WORKERS)
-        for i, (env, env_weights) in enumerate(train_splits)]
+        for i, (env, env_weights) in enumerate(in_splits)
+        if i not in args.test_envs]
+
+    uda_loaders = [InfiniteDataLoader(
+        dataset=env,
+        weights=env_weights,
+        batch_size=hparams['batch_size'],
+        num_workers=dataset.N_WORKERS)
+        for i, (env, env_weights) in enumerate(uda_splits)
+        if i in args.test_envs]
 
     eval_loaders = [FastDataLoader(
         dataset=env,
         batch_size=64,
         num_workers=dataset.N_WORKERS)
-        for env, _ in (eval_splits)]
-    eval_weights = [None for _, weights in (eval_splits)]
-    eval_loader_names = ['env{}_eval'.format(i)
-        for i in range(len(eval_splits))]
-
+        for env, _ in (in_splits + out_splits + uda_splits)]
+    eval_weights = [None for _, weights in (in_splits + out_splits + uda_splits)]
+    eval_loader_names = ['env{}_in'.format(i)
+        for i in range(len(in_splits))]
+    eval_loader_names += ['env{}_out'.format(i)
+        for i in range(len(out_splits))]
+    eval_loader_names += ['env{}_uda'.format(i)
+        for i in range(len(uda_splits))]
 
     algorithm_class = algorithms.get_algorithm_class(args.algorithm)
     algorithm = algorithm_class(dataset.input_shape, dataset.num_classes,
@@ -158,10 +184,10 @@ if __name__ == "__main__":
     algorithm.to(device)
 
     train_minibatches_iterator = zip(*train_loaders)
-    #uda_minibatches_iterator = zip(*uda_loaders)
+    uda_minibatches_iterator = zip(*uda_loaders)
     checkpoint_vals = collections.defaultdict(lambda: [])
 
-    steps_per_epoch = min([len(env)/hparams['batch_size'] for env,_ in train_splits])
+    steps_per_epoch = min([len(env)/hparams['batch_size'] for env,_ in in_splits])
 
     n_steps = args.steps or dataset.N_STEPS
     checkpoint_freq = args.checkpoint_freq or dataset.CHECKPOINT_FREQ
@@ -177,7 +203,7 @@ if __name__ == "__main__":
             "model_hparams": hparams,
             "model_dict": algorithm.state_dict()
         }
-        torch.save(save_dict, filename)
+        torch.save(save_dict, os.path.join(args.output_dir, filename))
 
 
     last_results_keys = None
@@ -185,7 +211,11 @@ if __name__ == "__main__":
         step_start_time = time.time()
         minibatches_device = [(x.to(device), y.to(device))
             for x,y in next(train_minibatches_iterator)]
-        uda_device = None
+        if args.task == "domain_adaptation":
+            uda_device = [x.to(device)
+                for x,_ in next(uda_minibatches_iterator)]
+        else:
+            uda_device = None
         step_vals = algorithm.update(minibatches_device, uda_device)
         checkpoint_vals['step_time'].append(time.time() - step_start_time)
 
@@ -228,10 +258,10 @@ if __name__ == "__main__":
             start_step = step + 1
             checkpoint_vals = collections.defaultdict(lambda: [])
 
-            if len(args.checkpoint_dir) > 0 and args.save_model_every_checkpoint:
-                save_checkpoint(os.path.join(args.checkpoint_dir, f'model_step{step}.pkl'))
-    
-    save_checkpoint(os.path.join(args.output_dir, 'model.pkl'))
+            if args.save_model_every_checkpoint:
+                save_checkpoint(f'model_step{step}.pkl')
+
+    save_checkpoint('model.pkl')
 
     with open(os.path.join(args.output_dir, 'done'), 'w') as f:
         f.write('done')
