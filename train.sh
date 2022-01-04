@@ -16,7 +16,7 @@ algorithm=$4
 index=$5
 
 python3 -m domainbed.scripts.my_train \
-       --data_dir="./domainbed/data/${data_dir}/" \
+       --data_dir= $data_dir \
        --algorithm $algorithm \
        --dataset $dataset \
        --train_env $env \

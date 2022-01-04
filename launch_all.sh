@@ -1,7 +1,7 @@
 #!/bin/bash
 
 dataset="VLCS"
-data_dir="VLCS"
+data_dir="domainbed/data"
 algorithm="ERM"
 num_envs=4
 
