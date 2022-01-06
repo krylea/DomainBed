@@ -4,6 +4,7 @@ dataset="VLCS"
 data_dir="domainbed/data"
 algorithm="ERM"
 num_envs=4
+output_dir="final-results"
 
 num_runs=3
 

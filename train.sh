@@ -14,10 +14,12 @@ data_dir=$2
 env=$3
 algorithm=$4
 index=$5
+output_dir=$6
 
 python3 -m domainbed.scripts.my_train \
        --data_dir=$data_dir \
        --algorithm $algorithm \
        --dataset $dataset \
        --train_env $env \
-       --output_dir "./results/${algorithm}-${dataset}-${env}/${index}"
+       --output_dir "${output_dir}/${algorithm}-${dataset}-${env}-${index}" \ 
+       --seed $index 
