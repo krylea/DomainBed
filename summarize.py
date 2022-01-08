@@ -69,7 +69,7 @@ parser.add_argument("--algorithm", type=str, default="ERM")
 
 args = parser.parse_args()
 
-records = reporting.load_records(args.result_dir)
+records = load_records(args.result_dir)
 results = get_results(records, args.dataset, args.algorithm)
 
 if not os.path.exists(args.output_dir):
