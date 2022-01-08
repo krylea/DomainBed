@@ -62,7 +62,7 @@ def get_results(records, dataset, algorithm):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("result_dir", type=str, default="results")
+parser.add_argument("--result_dir", type=str, default="results")
 parser.add_argument("--output_dir", type=str, default="results/summary")
 parser.add_argument("--dataset", type=str, default="VLCS")
 parser.add_argument("--algorithm", type=str, default="ERM")
@@ -77,7 +77,7 @@ if not os.path.exists(args.output_dir):
 
 outfile = os.path.join(args.output_dir, "%s_%s_summary.csv" % (args.dataset, args.algorithm))
 with open(outfile, 'w') as writer:
-    csvwriter = csv.writer(writer, delimeter=',')
+    csvwriter = csv.writer(writer, delimiter=',')
     for record in results:
         csvwriter.writerow(record)
 
