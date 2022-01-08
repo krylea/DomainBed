@@ -62,7 +62,8 @@ def get_results(records, dataset, algorithm):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--result_dir", type=str, default="results/summary")
+parser.add_argument("result_dir", type=str, default="results")
+parser.add_argument("--output_dir", type=str, default="results/summary")
 parser.add_argument("--dataset", type=str, default="VLCS")
 parser.add_argument("--algorithm", type=str, default="ERM")
 
@@ -71,10 +72,10 @@ args = parser.parse_args()
 records = reporting.load_records(args.result_dir)
 results = get_results(records, args.dataset, args.algorithm)
 
-if not os.path.exists(args.result_dir):
-    os.makedirs(args.result_dir)
+if not os.path.exists(args.output_dir):
+    os.makedirs(args.output_dir)
 
-outfile = os.path.join(args.result_dir, "%s_%s_summary.csv" % (args.dataset, args.algorithm))
+outfile = os.path.join(args.output_dir, "%s_%s_summary.csv" % (args.dataset, args.algorithm))
 with open(outfile, 'w') as writer:
     csvwriter = csv.writer(writer, delimeter=',')
     for record in results:
