@@ -62,7 +62,7 @@ def get_results(records, dataset, algorithm):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("result_dir", type=str, default="results/summary")
+parser.add_argument("--result_dir", type=str, default="results/summary")
 parser.add_argument("--dataset", type=str, default="VLCS")
 parser.add_argument("--algorithm", type=str, default="ERM")
 
