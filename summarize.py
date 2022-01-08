@@ -49,7 +49,7 @@ def get_results(records, dataset, algorithm):
             results[test_env] = val_accs.argmax("val_acc")["test_acc"]
         return results
     #assuming for now we have data for just one algorithm and dataset
-    filtered_records = records.filter_equals("dataset,algorithm", (dataset, algorithm))
+    filtered_records = records.filter_equals("args.dataset,args.algorithm", (dataset, algorithm))
     return filtered_records.group_map("args.train_env", get_accs)
 
 
