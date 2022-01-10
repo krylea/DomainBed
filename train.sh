@@ -21,5 +21,5 @@ python3 -m domainbed.scripts.my_train \
        --algorithm $algorithm \
        --dataset $dataset \
        --train_env $env \
-       --output_dir "${output_dir}/${algorithm}-${dataset}-${env}-${index}" \ 
-       --seed $index 
+       --seed $index \
+       --output_dir "${output_dir}/${algorithm}-${dataset}-${env}${index}" 
