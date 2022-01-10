@@ -12,7 +12,7 @@ for (( i = 0 ; i < $num_envs ; i++ ))
 do
     for (( j = 0 ; j < $num_runs ; j++ ))
     do
-        sbatch train.sh $dataset $data_dir $i $algorithm $j
+        sbatch train.sh $dataset $data_dir $i $algorithm $j $output_dir
     done
 done
 
